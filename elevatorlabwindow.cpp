@@ -23,15 +23,12 @@ ElevatorLabWindow::ElevatorLabWindow(QWidget *parent) :
 
     /// Initial height above the ground, meters
     //TODO when the algorithm is working: Change this to the
-    const double initialHeight = 0;
+    const double initialHeight = floorHeight * 6;
 
     /// Time elapsed between lines in the CSV file, seconds
     const double lineTime = 0.1;
 
     //Set up loop variables
-
-    /// Acceleration, meters/second^2
-    double acceleration = 0;
 
     /// Velocity, meters/second
     double velocity = 0;
@@ -39,6 +36,7 @@ ElevatorLabWindow::ElevatorLabWindow(QWidget *parent) :
     /// Height, meters
     double height = initialHeight;
 
+    //Hard-coded file path. Change this if running on another computer.
     QFile csvFile("/Users/samcrow/Downloads/elevator_lab.csv");
     csvFile.open(QIODevice::Text | QIODevice::ReadOnly);
 
@@ -51,7 +49,7 @@ ElevatorLabWindow::ElevatorLabWindow(QWidget *parent) :
     qDebug() << outPath;
     QFile outFile(outPath);
     outFile.open(QIODevice::Text | QIODevice::Truncate | QIODevice::WriteOnly);
-    outFile.write("Time, Acceleration, Velocity, Corrected Velocity, Height\n");
+    outFile.write("Time, Acceleration, Velocity, Corrected Velocity, Height, Floor\n");
 
     //Iterate through every line
     while(true) {
@@ -82,8 +80,15 @@ ElevatorLabWindow::ElevatorLabWindow(QWidget *parent) :
         /// The velocity, corrected to reduce accumulated error
         double correctedVelocity = velocity - getError(time);
 
+        //Try to correct for any additional error in the corrected velocity by setting values with very small magnitudes to zero
+        if(qAbs<double>(correctedVelocity) < 0.1) {
+            correctedVelocity = 0;
+        }
+
         height += correctedVelocity * lineTime;
 
+        //Calculate which floor the elevator is on
+        int floor = qRound(height / floorHeight);
 
         qDebug() << "Time" << time << "\tVelocity" << velocity << "\tCorrected velocity" << correctedVelocity << "\tError" << getError(time) << "\tHeight" << height;
 
@@ -97,6 +102,8 @@ ElevatorLabWindow::ElevatorLabWindow(QWidget *parent) :
         outFile.write(QByteArray::number(correctedVelocity));
         outFile.write(",");
         outFile.write(QByteArray::number(height));
+        outFile.write(",");
+        outFile.write(QByteArray::number(floor));
         outFile.write("\n");
 
     }
